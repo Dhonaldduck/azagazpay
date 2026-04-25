@@ -1,0 +1,9 @@
+{
+    "configurations": [
+        {
+            "name": "ESP32 PlatformIO",
+            "compileCommands": "${workspaceFolder}/azagazpay-firmware/compile_commands.json"
+        }
+    ],
+    "version": 4
+}

@@ -1,4 +1,5 @@
 {
     "C_Cpp.errorSquiggles": "enabled",
-    "C_Cpp.default.compileCommands": "${workspaceFolder}/azagazpay-firmware/compile_commands.json"
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/azagazpay-firmware/compile_commands.json",
+    "java.configuration.updateBuildConfiguration": "automatic"
 }

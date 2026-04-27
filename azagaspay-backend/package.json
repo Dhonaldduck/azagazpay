@@ -4,11 +4,12 @@
   "description": "Backend API AzagasPay — Sistem Pembayaran Kantin Digital",
   "main": "src/index.js",
   "scripts": {
-    "dev": "nodemon src/index.js",
-    "start": "node src/index.js",
-    "setup": "node src/database/migrate.js && node src/database/seed.js",
-    "db:seed": "node src/database/seed.js",
-    "db:reset": "rm -f azagaspay.db && node src/database/migrate.js && node src/database/seed.js"
+    "dev": "nodemon --exec \"node --experimental-sqlite\" src/index.js",
+    "start": "node --experimental-sqlite src/index.js",
+    "start:auto": "node scripts/start-if-needed.js",
+    "setup": "node --experimental-sqlite src/database/migrate.js && node --experimental-sqlite prisma/seed.js",
+    "db:seed": "node --experimental-sqlite prisma/seed.js",
+    "db:reset": "rm -f azagaspay.db && node --experimental-sqlite src/database/migrate.js && node --experimental-sqlite prisma/seed.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

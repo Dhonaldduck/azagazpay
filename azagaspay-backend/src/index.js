@@ -10,7 +10,7 @@ const rateLimit = require('express-rate-limit');
 const routes = require('./routes');
 const { error } = require('./utils/response');
 const logger = require('./config/logger');
-const prisma = require('./config/database');
+const database = require('./config/database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -67,9 +67,9 @@ if (process.env.NODE_ENV !== 'test') {
 app.set('trust proxy', 1);
 
 // ── Health check ──────────────────────────────────────────────
-app.get('/health', async (req, res) => {
+app.get('/health', (req, res) => {
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    database.get('SELECT 1 AS ok');
     res.json({
       status: 'ok',
       service: 'AzagasPay API',
@@ -77,7 +77,8 @@ app.get('/health', async (req, res) => {
       timestamp: new Date().toISOString(),
       database: 'connected',
     });
-  } catch {
+  } catch (err) {
+    logger.error('Health check gagal:', err);
     res.status(503).json({ status: 'error', database: 'disconnected' });
   }
 });
@@ -111,7 +112,7 @@ const server = app.listen(PORT, () => {
 const gracefulShutdown = async (signal) => {
   logger.info(`${signal} diterima — menutup server...`);
   server.close(async () => {
-    
+    database.closeDb();
     logger.info('Server dan database ditutup');
     process.exit(0);
   });

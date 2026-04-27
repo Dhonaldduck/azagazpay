@@ -42,3 +42,19 @@ android {
 flutter {
     source = "../.."
 }
+
+val nodeExecutable = providers.environmentVariable("NODE_BINARY").orNull
+    ?: listOf("/usr/bin/node", "/usr/local/bin/node", "/opt/homebrew/bin/node")
+        .firstOrNull { file(it).canExecute() }
+    ?: "node"
+
+val startAzagaspayBackend = tasks.register<Exec>("startAzagaspayBackend") {
+    group = "azagaspay"
+    description = "Starts the local AzagasPay backend before Android debug/profile builds."
+    workingDir = rootProject.projectDir.resolve("../azagaspay-backend")
+    commandLine(nodeExecutable, "scripts/start-if-needed.js")
+}
+
+tasks.matching { it.name == "preDebugBuild" || it.name == "preProfileBuild" }.configureEach {
+    dependsOn(startAzagaspayBackend)
+}

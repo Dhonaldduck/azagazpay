@@ -2,46 +2,34 @@
 // Menggunakan node:sqlite built-in Node.js 22 — tidak butuh library tambahan
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
+const { schemaSql } = require('../database/schema');
 
-const DB_PATH = path.join(process.cwd(), 'azagaspay.db');
+const BACKEND_ROOT = path.resolve(__dirname, '../..');
+
+const resolveDatabasePath = () => {
+  const databaseUrl = process.env.DATABASE_URL || 'file:./azagaspay.db';
+  const dbPath = databaseUrl.startsWith('file:')
+    ? databaseUrl.slice('file:'.length)
+    : databaseUrl;
+
+  return path.isAbsolute(dbPath)
+    ? dbPath
+    : path.resolve(BACKEND_ROOT, dbPath);
+};
+
+const DB_PATH = resolveDatabasePath();
+
+const initializeDatabase = (db) => {
+  db.exec('PRAGMA journal_mode = WAL');
+  db.exec('PRAGMA foreign_keys = ON');
+  db.exec(schemaSql);
+};
 
 let _db;
 const getDb = () => {
   if (!_db) {
     _db = new DatabaseSync(DB_PATH);
-    _db.exec('PRAGMA journal_mode = WAL');
-    _db.exec('PRAGMA foreign_keys = ON');
-    _db.exec(`
-      CREATE TABLE IF NOT EXISTS topup_requests (
-        id TEXT PRIMARY KEY,
-        student_id TEXT NOT NULL,
-        amount INTEGER NOT NULL,
-        notes TEXT,
-        status TEXT DEFAULT 'PENDING',
-        requested_at TEXT DEFAULT (datetime('now')),
-        approved_by TEXT,
-        approved_at TEXT,
-        FOREIGN KEY (student_id) REFERENCES students(id)
-      );
-      CREATE INDEX IF NOT EXISTS idx_topup_requests_student ON topup_requests(student_id);
-      CREATE INDEX IF NOT EXISTS idx_topup_requests_status ON topup_requests(status);
-      CREATE TABLE IF NOT EXISTS transfers (
-        id TEXT PRIMARY KEY,
-        sender_id TEXT NOT NULL,
-        receiver_id TEXT NOT NULL,
-        amount INTEGER NOT NULL,
-        note TEXT,
-        sender_balance_before INTEGER NOT NULL,
-        sender_balance_after INTEGER NOT NULL,
-        receiver_balance_before INTEGER NOT NULL,
-        receiver_balance_after INTEGER NOT NULL,
-        created_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (sender_id) REFERENCES students(id),
-        FOREIGN KEY (receiver_id) REFERENCES students(id)
-      );
-      CREATE INDEX IF NOT EXISTS idx_transfers_sender ON transfers(sender_id);
-      CREATE INDEX IF NOT EXISTS idx_transfers_receiver ON transfers(receiver_id);
-    `);
+    initializeDatabase(_db);
   }
   return _db;
 };
@@ -86,4 +74,23 @@ const cuid = () => {
   return `c${ts}${rnd}`;
 };
 
-module.exports = { getDb, run, get, all, transaction, formatRupiah, cuid };
+const closeDb = () => {
+  if (_db) {
+    _db.close();
+    _db = null;
+  }
+};
+
+module.exports = {
+  DB_PATH,
+  resolveDatabasePath,
+  initializeDatabase,
+  closeDb,
+  getDb,
+  run,
+  get,
+  all,
+  transaction,
+  formatRupiah,
+  cuid,
+};

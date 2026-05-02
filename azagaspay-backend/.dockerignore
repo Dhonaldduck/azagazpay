@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log
+.env
+azagaspay.db
+azagaspay.db-journal
+azagaspay.db-shm
+azagaspay.db-wal
+.git
+.vscode
+build

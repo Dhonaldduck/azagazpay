@@ -1,0 +1,22 @@
+{
+  "folders": [
+    {
+      "name": "AzagasPay - Flutter App",
+      "path": "."
+    },
+    {
+      "name": "AzagasPay - Firmware (ESP32)",
+      "path": "azagazpay-firmware"
+    },
+    {
+      "name": "AzagasPay - Backend (NodeJS)",
+      "path": "azagaspay-backend"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "azagazpay-firmware": false,
+      "azagaspay-backend": false
+    }
+  }
+}

@@ -1,10 +1,12 @@
 // src/controllers/auth.controller.js
 const bcrypt = require('bcryptjs');
 const jwt    = require('jsonwebtoken');
-const crypto = require('crypto');
-const { get, run, all, cuid } = require('../config/database');
+const { get, run, cuid } = require('../config/database');
 const { success, error }       = require('../utils/response');
-const { hashUid }              = require('../utils/nfc-crypto');
+const {
+  findOrRegisterCard,
+  formatStudentForNfc,
+} = require('../utils/nfc-card-registry');
 const logger                   = require('../config/logger');
 
 const makeTokens = (payload) => ({
@@ -54,12 +56,9 @@ const loginWithPin = async (req, res) => {
 const loginWithNfc = async (req, res) => {
   try {
     const { uid } = req.body;
-    const uidHash = hashUid(uid);
-    const card    = get('SELECT * FROM nfc_cards WHERE uid_hash = ? AND is_active = 1', [uidHash]);
-    if (!card) return error(res, 'Kartu NFC tidak terdaftar', 401);
-
-    const student = get('SELECT * FROM students WHERE id = ? AND is_active = 1', [card.student_id]);
-    if (!student) return error(res, 'Akun siswa dinonaktifkan', 403);
+    const { card, student, created } = findOrRegisterCard(uid);
+    if (!card || !student) return error(res, 'Kartu NFC tidak valid', 400);
+    if (!student.is_active) return error(res, 'Akun siswa dinonaktifkan', 403);
 
     run('UPDATE nfc_cards SET last_used_at = ? WHERE id = ?',
       [new Date().toISOString(), card.id]);
@@ -71,8 +70,12 @@ const loginWithNfc = async (req, res) => {
       [cuid(), student.id, refreshToken,
        new Date(Date.now() + 30*24*60*60*1000).toISOString()]);
 
-    return success(res, { student: fmtStudent(student, card), accessToken, refreshToken },
-      'Login NFC berhasil');
+    return success(
+      res,
+      { student: formatStudentForNfc(student, card), accessToken, refreshToken },
+      created ? 'Kartu baru didaftarkan dan login NFC berhasil' : 'Login NFC berhasil',
+      created ? 201 : 200,
+    );
   } catch (e) {
     logger.error('loginWithNfc:', e);
     return error(res, 'Terjadi kesalahan server', 500);

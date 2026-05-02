@@ -102,9 +102,9 @@ app.use((err, req, res, next) => {
 });
 
 // ── Start server ──────────────────────────────────────────────
-const server = app.listen(PORT, () => {
-  logger.info(`\n🚀 AzagasPay API berjalan di http://localhost:${PORT}`);
-  logger.info(`📄 Dokumentasi: http://localhost:${PORT}/api-docs`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+  logger.info(`\n🚀 AzagasPay API berjalan di http://0.0.0.0:${PORT}`);
+  logger.info(`📄 Dokumentasi: http://172.20.10.3:${PORT}/api-docs`);
   logger.info(`🔧 Environment: ${process.env.NODE_ENV || 'development'}\n`);
 });
 

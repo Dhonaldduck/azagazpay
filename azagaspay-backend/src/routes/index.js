@@ -108,9 +108,9 @@ router.post('/transactions/nfc-pay',
   authDevice,
   [
     body('uid').notEmpty().withMessage('UID kartu wajib diisi'),
-    body('items').isArray({ min: 1 }),
-    body('items.*.menuItemId').notEmpty(),
-    body('items.*.quantity').isInt({ min: 1 }),
+    body('items').optional().isArray().withMessage('Items harus berupa array'),
+    body('items.*.menuItemId').if(body('items').exists()).notEmpty(),
+    body('items.*.quantity').if(body('items').exists()).isInt({ min: 1 }),
     validate,
   ],
   txCtrl.nfcPay,
@@ -227,6 +227,20 @@ router.get('/iot/devices/:id/stats', authAdmin, iotCtrl.getDeviceStats);
 
 // POST /api/iot/heartbeat — ping dari ESP32 (authDevice)
 router.post('/iot/heartbeat', authDevice, iotCtrl.heartbeat);
+
+// GET /api/iot/pending-reg — polling registrasi dari ESP32 (authDevice)
+router.get('/iot/pending-reg', authDevice, iotCtrl.getPendingReg);
+
+// POST /api/iot/start-reg — admin mulai mode registrasi (authAdmin)
+router.post('/iot/start-reg',
+  authAdmin,
+  [
+    body('deviceCode').notEmpty(),
+    body('nisn').notEmpty(),
+    validate,
+  ],
+  iotCtrl.startRegistration,
+);
 
 // POST /api/iot/register-card — daftarkan kartu NFC siswa via ESP32 (guru tap kartu)
 router.post('/iot/register-card', authDevice, iotCtrl.registerCardForStudent);

@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../models/transaction.dart';
 import '../widgets/common_widgets.dart';
 import 'dashboard_screen.dart';
+import 'main_navigation_screen.dart';
 
 class PaymentSuccessScreen extends StatefulWidget {
   final Transaction transaction;
@@ -227,7 +228,7 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen>
         icon: const Icon(Icons.shopping_bag_outlined,
           color: Colors.white, size: 16),
         onTap: () => Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+          MaterialPageRoute(builder: (_) => MainNavigationScreen()),
           (_) => false),
       )),
   ]);

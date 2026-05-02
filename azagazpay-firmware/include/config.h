@@ -6,12 +6,12 @@
 // ═══════════════════════════════════════════════════════════════════
 
 // ── WiFi ───────────────────────────────────────────────────────────
-#define WIFI_SSID         "Lavender Living 3" 
-#define WIFI_PASSWORD     "Lavender3smile"
+#define WIFI_SSID         "Dhonaldduck"
+#define WIFI_PASSWORD     "abcdefgh"
 
 // ── Server URL ─────────────────────────────────────────────────────
-// Ganti IP sesuai komputer yang menjalankan backend Node.js
-#define SERVER_URL        "http://192.168.1.121:3000/api"
+// Menggunakan Cloudflare Tunnel agar koneksi stabil dan global
+#define SERVER_URL        "https://utilization-paxil-suffering-asking.trycloudflare.com/api"
 
 // ── Device Credentials ─────────────────────────────────────────────
 // Harus sudah didaftarkan via Guru Dashboard → Perangkat IoT
@@ -22,7 +22,7 @@
 // HARUS identik dengan nilai di .env backend:
 //   NFC_ENCRYPTION_KEY=azagasnfc1234567
 //   NFC_ENCRYPTION_IV=azagasiv12345678
-#define AES_KEY           "azagasnfc1234567"  // tepat 16 karakter
+#define AES_KEY           "azagasnfc12345678"  // tepat 16 karakter
 #define AES_IV            "azagasiv12345678"  // tepat 16 karakter
 
 // ── Firmware Version ───────────────────────────────────────────────

@@ -41,6 +41,11 @@ POST /auth/nfc-login
 { "uid": "A1:B2:C3:D4" }
 ```
 
+Jika UID belum pernah terdaftar, backend otomatis membuat akun siswa sementara
+(`nisn` berawalan `NFC-`) dengan saldo awal `0`, mendaftarkan kartu, lalu
+langsung mengembalikan token login. Jika UID sudah terdaftar, backend langsung
+login ke pemilik kartu yang aktif.
+
 ### Login Admin
 ```
 POST /auth/admin/login
@@ -164,6 +169,11 @@ X-Timestamp: <unix>
   ]
 }
 ```
+
+`items` boleh kosong atau tidak dikirim. Jika kosong, endpoint berjalan sebagai
+mode identifikasi: kartu yang sudah dikenal akan mengembalikan profil dan saldo
+terbaru. Jika kartu belum dikenal, endpoint otomatis mendaftarkan kartu baru
+sebagai akun sementara dan mengembalikan `mode: "REGISTERED"`.
 
 ### Riwayat Transaksi
 ```

@@ -144,6 +144,16 @@ CREATE TABLE IF NOT EXISTS transfers (
   FOREIGN KEY (receiver_id) REFERENCES students(id)
 );
 
+CREATE TABLE IF NOT EXISTS pending_registrations (
+  id TEXT PRIMARY KEY,
+  device_code TEXT NOT NULL,
+  nisn TEXT NOT NULL,
+  status TEXT DEFAULT 'PENDING',
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (device_code) REFERENCES nfc_devices(device_code)
+);
+
 CREATE INDEX IF NOT EXISTS idx_students_nisn ON students(nisn);
 CREATE INDEX IF NOT EXISTS idx_nfc_cards_uid ON nfc_cards(uid_hash);
 CREATE INDEX IF NOT EXISTS idx_transactions_student ON transactions(student_id, created_at);

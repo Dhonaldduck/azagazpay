@@ -6,8 +6,8 @@ import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
-import 'dashboard_screen.dart';
 import 'guru_dashboard_screen.dart';
+import 'main_navigation_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -54,7 +54,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (auth.isLoggedIn) {
       destination = auth.isGuru
           ? const GuruDashboardScreen()
-          : const DashboardScreen();
+          : const MainNavigationScreen();
     } else {
       destination = const LoginScreen();
     }

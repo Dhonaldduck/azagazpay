@@ -7,6 +7,11 @@ const { schemaSql } = require('../database/schema');
 const BACKEND_ROOT = path.resolve(__dirname, '../..');
 
 const resolveDatabasePath = () => {
+  // Jika di Docker/Cloud, gunakan folder /app/data
+  if (process.env.NODE_ENV === 'production') {
+    return '/app/data/azagaspay.db';
+  }
+  
   const databaseUrl = process.env.DATABASE_URL || 'file:./azagaspay.db';
   const dbPath = databaseUrl.startsWith('file:')
     ? databaseUrl.slice('file:'.length)

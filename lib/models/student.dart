@@ -8,6 +8,9 @@ class Student {
   final int balance;
   final String? activeCard;
   final bool isActive;
+  final String? gender;
+  final String? phoneNumber;
+  final String? dateOfBirth;
 
   const Student({
     required this.id,
@@ -17,6 +20,9 @@ class Student {
     required this.balance,
     this.activeCard,
     this.isActive = true,
+    this.gender,
+    this.phoneNumber,
+    this.dateOfBirth,
   });
 
   factory Student.fromJson(Map<String, dynamic> json) {
@@ -28,6 +34,9 @@ class Student {
       balance: json['balance'] as int,
       activeCard: json['activeCard'] as String?,
       isActive: json['isActive'] as bool? ?? (json['is_active'] == 1),
+      gender: json['gender'] as String?,
+      phoneNumber: json['phoneNumber'] as String?,
+      dateOfBirth: json['dateOfBirth'] as String?,
     );
   }
 
@@ -39,12 +48,18 @@ class Student {
     'balance': balance,
     'activeCard': activeCard,
     'isActive': isActive,
+    'gender': gender,
+    'phoneNumber': phoneNumber,
+    'dateOfBirth': dateOfBirth,
   };
 
   Student copyWith({
     int? balance,
     String? activeCard,
     bool? isActive,
+    String? gender,
+    String? phoneNumber,
+    String? dateOfBirth,
   }) {
     return Student(
       id: id,
@@ -54,6 +69,9 @@ class Student {
       balance: balance ?? this.balance,
       activeCard: activeCard ?? this.activeCard,
       isActive: isActive ?? this.isActive,
+      gender: gender ?? this.gender,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
     );
   }
 
@@ -64,4 +82,6 @@ class Student {
       )}';
 
   String get displayCard => activeCard ?? '**** **** **** ????';
+
+  String get avatarUrl => 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name)}&background=random&size=128';
 }

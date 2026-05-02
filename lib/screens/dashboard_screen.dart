@@ -11,9 +11,6 @@ import '../services/cart_provider.dart';
 import '../widgets/common_widgets.dart';
 import '../services/student_service.dart';
 import 'nfc_tap_screen.dart';
-import 'iot_setup_screen.dart';
-import 'login_screen.dart';
-import 'transaction_history_screen.dart';
 import 'student_topup_request_screen.dart';
 import 'student_transfer_screen.dart';
 
@@ -44,36 +41,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final student = await StudentService.instance.getProfile();
       if (mounted) context.read<AuthProvider>().updateBalance(student.balance);
     } catch (_) {}
-  }
-
-  Future<void> _onLogout() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Keluar', style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
-        content: Text('Yakin ingin keluar dari AzagasPay?',
-            style: GoogleFonts.poppins(fontSize: 13)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Batal', style: GoogleFonts.poppins(color: AppColors.textMuted))),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Keluar',
-                style: GoogleFonts.poppins(color: Colors.red, fontWeight: FontWeight.w700))),
-        ],
-      ),
-    );
-    if (confirm == true && mounted) {
-      await context.read<AuthProvider>().logout();
-      if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (_) => false,
-        );
-      }
-    }
   }
 
   @override
@@ -107,48 +74,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Halo, ${student?.name.split(' ').first ?? ''} 👋',
-                  style: GoogleFonts.poppins(fontSize: 12, color: Colors.white70)),
-                Row(children: [
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const TransactionHistoryScreen()),
-                    ).then((_) { if (mounted) _refreshBalance(); }),
-                    child: _headerIcon(Icons.receipt_long_rounded)),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const IotSetupScreen())),
-                    child: _headerIcon(Icons.settings_input_antenna_rounded)),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: _onLogout,
-                    child: _headerIcon(Icons.logout_rounded)),
-                ]),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text('Menu Kantin',
-                  style: GoogleFonts.poppins(
-                    fontSize: 20, fontWeight: FontWeight.w800,
-                    color: Colors.white)),
+                  style: GoogleFonts.poppins(fontSize: 18, color: Colors.white70)),
                 Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                   Text('Saldo',
-                    style: GoogleFonts.poppins(fontSize: 10, color: Colors.white60)),
+                    style: GoogleFonts.poppins(fontSize: 15, color: Colors.white60)),
                   Text(student?.formattedBalance ?? 'Rp 0',
                     style: GoogleFonts.poppins(
-                      fontSize: 17, fontWeight: FontWeight.w800,
+                      fontSize: 25, fontWeight: FontWeight.w800,
                       color: Colors.white)),
                 ]),
               ],
             ),
             const SizedBox(height: 10),
+                        Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Halo, ${student?.name.split(' ').first ?? ''} 👋',
+                  style: GoogleFonts.poppins(
+                    fontSize: 20, fontWeight: FontWeight.w800,
+                    color: Colors.white)),
+                const SizedBox(),
+              ],
+            ),
+            const SizedBox(height: 4),
             Row(children: [
               Expanded(
                 child: _headerActionBtn(
@@ -179,14 +130,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-
-  Widget _headerIcon(IconData icon) => Container(
-    width: 34, height: 34,
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.18),
-      borderRadius: BorderRadius.circular(10)),
-    child: Icon(icon, color: Colors.white, size: 18),
-  );
 
   Widget _headerActionBtn({
     required IconData icon,

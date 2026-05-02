@@ -2,12 +2,14 @@
 const { get, run, all, transaction, cuid, formatRupiah } = require('../config/database');
 const { success, error, paginate } = require('../utils/response');
 const { hashUid, decryptUid } = require('../utils/nfc-crypto');
+const { findOrRegisterCard, formatStudentForNfc } = require('../utils/nfc-card-registry');
 const logger = require('../config/logger');
 
-const fmtTx = (tx) => {
+const fmtTx = (tx, student = null, card = null) => {
   const items = all('SELECT * FROM transaction_items WHERE transaction_id=?', [tx.id]);
   return {
     id: tx.id,
+    ...(student ? { student: formatStudentForNfc(student, card) } : {}),
     totalAmount: tx.total_amount,
     formattedTotal: formatRupiah(tx.total_amount),
     balanceBefore: tx.balance_before,
@@ -46,7 +48,7 @@ const createTransaction = (req, res) => {
       itemDetails.push({ menu, quantity: oi.quantity });
     }
 
-    const student = get('SELECT balance FROM students WHERE id=?', [studentId]);
+    const student = get('SELECT id,nisn,name,class,balance,is_active FROM students WHERE id=?', [studentId]);
     if (student.balance < totalAmount)
       return error(res, `Saldo tidak cukup. Saldo: ${formatRupiah(student.balance)}, Total: ${formatRupiah(totalAmount)}`, 400);
 
@@ -71,8 +73,9 @@ const createTransaction = (req, res) => {
     });
 
     const tx = get('SELECT * FROM transactions WHERE id=?', [txId]);
+    const responseStudent = { ...student, balance: newBalance };
     logger.info(`Transaksi berhasil — Total: ${formatRupiah(totalAmount)}`);
-    return success(res, fmtTx(tx), 'Pembayaran berhasil', 201);
+    return success(res, fmtTx(tx, responseStudent, req.nfcCard), 'Pembayaran berhasil', 201);
   } catch (e) {
     logger.error('createTransaction:', e);
     return error(res, 'Transaksi gagal', 500);
@@ -81,39 +84,38 @@ const createTransaction = (req, res) => {
 
 // POST /api/transactions/nfc-pay
 const nfcPay = (req, res) => {
-  const { uid: encryptedUid, items } = req.body;
+  const { uid: encryptedUid, items = [] } = req.body;
   const device = req.device;
   try {
     // Dekripsi UID terenkripsi dari ESP32 sebelum di-hash
-    const uid     = decryptUid(encryptedUid);
-    const uidHash = hashUid(uid);
-
-    const card = get('SELECT * FROM nfc_cards WHERE uid_hash=? AND is_active=1', [uidHash]);
-    if (!card) return error(res, 'Kartu NFC tidak valid', 401);
-
-    const student = get('SELECT * FROM students WHERE id=? AND is_active=1', [card.student_id]);
-    if (!student) return error(res, 'Akun siswa dinonaktifkan', 403);
+    const uid = decryptUid(encryptedUid);
+    const { card, student, created } = findOrRegisterCard(uid);
+    if (!card || !student) return error(res, 'Kartu NFC tidak valid', 400);
+    if (!student.is_active) return error(res, 'Akun siswa dinonaktifkan', 403);
 
     run('UPDATE nfc_cards SET last_used_at=? WHERE id=?', [new Date().toISOString(), card.id]);
     run("UPDATE nfc_devices SET last_heartbeat_at=datetime('now'),status='ONLINE' WHERE id=?",
       [device.id]);
 
+    if (created) {
+      return success(res, {
+        mode: 'REGISTERED',
+        cardMasked: card.uid_masked,
+        student: formatStudentForNfc(student, card),
+      }, `Kartu baru terdaftar: ${card.uid_masked}`, 201);
+    }
+
     // Identifikasi saja (tanpa items) — tampilkan info siswa ke ESP32
     if (!items || !Array.isArray(items) || items.length === 0) {
       return success(res, {
         mode: 'IDENTIFICATION',
-        student: {
-          name:             student.name,
-          nisn:             student.nisn,
-          class:            student.class,
-          balance:          student.balance,
-          formattedBalance: formatRupiah(student.balance),
-        },
+        student: formatStudentForNfc(student, card),
       }, `Siswa teridentifikasi: ${student.name}`);
     }
 
     // Mode pembayaran — lanjut ke createTransaction
     req.student       = student;
+    req.nfcCard       = card;
     req.body.deviceId = device.id;
     req.body.uid      = uid;  // kirim UID plaintext (sudah di-hash di createTransaction)
     return createTransaction(req, res);

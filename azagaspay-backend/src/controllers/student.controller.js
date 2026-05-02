@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { get, run, all, transaction, cuid, formatRupiah } = require('../config/database');
 const { success, error } = require('../utils/response');
 const { hashUid, maskUid } = require('../utils/nfc-crypto');
+const { isAutoRegisteredNisn } = require('../utils/nfc-card-registry');
 const logger = require('../config/logger');
 
 // GET /api/students/me
@@ -15,6 +16,7 @@ const getProfile = (req, res) => {
       id: student.id, nisn: student.nisn, name: student.name,
       class: student.class, balance: student.balance,
       formattedBalance: `Rp ${parseInt(student.balance).toLocaleString('id-ID')}`,
+      activeCard: cards[0]?.uid_masked ?? null,
       nfcCards: cards, totalTransactions: total });
   } catch { return error(res, 'Gagal mengambil profil', 500); }
 };
@@ -25,12 +27,35 @@ const registerNfcCard = (req, res) => {
     const { uid } = req.body;
     const uidHash  = hashUid(uid);
     const uidMasked = maskUid(uid);
-    const existing = get('SELECT id FROM nfc_cards WHERE uid_hash=?', [uidHash]);
-    if (existing) return error(res, 'Kartu NFC sudah terdaftar', 409);
-    run('UPDATE nfc_cards SET is_active=0 WHERE student_id=?', [req.student.id]);
-    const id = cuid();
-    run('INSERT INTO nfc_cards(id,student_id,uid_hash,uid_masked) VALUES(?,?,?,?)',
-        [id, req.student.id, uidHash, uidMasked]);
+    const existing = get(`
+      SELECT c.id card_id, c.student_id, s.name, s.nisn
+      FROM nfc_cards c
+      JOIN students s ON s.id=c.student_id
+      WHERE c.uid_hash=?
+    `, [uidHash]);
+    const canClaimAutoCard = existing &&
+      existing.student_id !== req.student.id &&
+      isAutoRegisteredNisn(existing.nisn);
+    if (existing && existing.student_id !== req.student.id && !canClaimAutoCard) {
+      return error(res, 'Kartu NFC sudah terdaftar', 409);
+    }
+
+    transaction(() => {
+      run('UPDATE nfc_cards SET is_active=0 WHERE student_id=?', [req.student.id]);
+      if (existing) {
+        run(
+          "UPDATE nfc_cards SET student_id=?, is_active=1, registered_at=datetime('now') WHERE id=?",
+          [req.student.id, existing.card_id],
+        );
+        if (canClaimAutoCard) {
+          run("UPDATE students SET is_active=0, updated_at=datetime('now') WHERE id=?", [existing.student_id]);
+        }
+      } else {
+        const id = cuid();
+        run('INSERT INTO nfc_cards(id,student_id,uid_hash,uid_masked) VALUES(?,?,?,?)',
+            [id, req.student.id, uidHash, uidMasked]);
+      }
+    });
     return success(res, { uidMasked, registeredAt: new Date().toISOString() },
       'Kartu NFC berhasil didaftarkan', 201);
   } catch (e) {

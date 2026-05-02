@@ -5,10 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../services/server_config_service.dart';
 import '../widgets/common_widgets.dart';
-import 'dashboard_screen.dart';
 import 'guru_dashboard_screen.dart';
 import 'nfc_tap_screen.dart';
+import 'main_navigation_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -73,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return;
       if (ok) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
         );
       } else {
         _showSnackbar(auth.errorMessage ?? 'Login gagal');
@@ -143,6 +144,66 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
+  int _secretTapCount = 0;
+
+  void _onSecretTap() {
+    _secretTapCount++;
+    if (_secretTapCount >= 5) {
+      _secretTapCount = 0;
+      _showServerConfigDialog();
+    }
+  }
+
+  void _showServerConfigDialog() async {
+    final config = ServerConfigService.instance;
+    final currentUrl = await config.getBaseUrl();
+    final ctrl = TextEditingController(text: currentUrl);
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Pengaturan Server', style: GoogleFonts.poppins(fontWeight: FontWeight.w800)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Ganti URL API Backend secara dinamis.', 
+              style: GoogleFonts.poppins(fontSize: 12)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: ctrl,
+              decoration: const InputDecoration(
+                labelText: 'Base URL',
+                hintText: 'http://172.20.10.3:3000/api',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await config.resetToDefault();
+              if (mounted) Navigator.pop(context);
+              _showSnackbar('URL direset ke default');
+            },
+            child: const Text('Reset'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (ctrl.text.isNotEmpty) {
+                await config.setBaseUrl(ctrl.text.trim());
+                if (mounted) Navigator.pop(context);
+                _showSnackbar('Server diperbarui ke: ${ctrl.text}');
+              }
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader() => Container(
     height: 150,
     decoration: const BoxDecoration(gradient: AppColors.headerGradient),
@@ -155,14 +216,17 @@ class _LoginScreenState extends State<LoginScreen>
       SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
-          child: Container(
-            width: 42, height: 42,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.22),
-              borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: Colors.white.withOpacity(0.38), width: 1.5),
+          child: GestureDetector(
+            onTap: _onSecretTap,
+            child: Container(
+              width: 42, height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.22),
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: Colors.white.withOpacity(0.38), width: 1.5),
+              ),
+              child: const Icon(Icons.credit_card_rounded, color: Colors.white, size: 22),
             ),
-            child: const Icon(Icons.credit_card_rounded, color: Colors.white, size: 22),
           ),
         ),
       ),

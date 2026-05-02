@@ -5,6 +5,7 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <mbedtls/md.h>
@@ -40,6 +41,7 @@ static int       gItemCount = 0;
 
 // ── Forward Declarations ────────────────────────────────────────────
 void     connectWifi();
+bool     ensureWiFi();
 bool     syncTime();
 bool     sendHeartbeat();
 void     checkPendingRegistration();
@@ -246,8 +248,10 @@ bool sendHeartbeat() {
   if (WiFi.status() != WL_CONNECTED) return false;
   unsigned long t0 = millis();
 
+  WiFiClientSecure client;
+  client.setInsecure();
   HTTPClient http;
-  http.begin(String(SERVER_URL) + "/iot/heartbeat");
+  http.begin(client, String(SERVER_URL) + "/iot/heartbeat");
   http.setTimeout(HTTP_TIMEOUT_MS);
   addDeviceHeaders(http);
 
@@ -263,19 +267,11 @@ bool sendHeartbeat() {
   http.end();
 
   if (code == 200) {
-    HTTPClient http2;
-    http2.begin(String(SERVER_URL) + "/iot/heartbeat");
-    http2.setTimeout(HTTP_TIMEOUT_MS);
-    addDeviceHeaders(http2);
-    doc["latencyMs"] = lat;
-    body = "";
-    serializeJson(doc, body);
-    http2.POST(body);
-    http2.end();
     Serial.printf("[HB] OK %d ms\n", lat);
     return true;
   }
-  Serial.printf("[HB] FAIL %d\n", code);
+  Serial.printf("[HB] FAIL Code: %d | ESP IP: %s | Target: %s\n", 
+    code, WiFi.localIP().toString().c_str(), SERVER_URL);
   return false;
 }
 
@@ -299,8 +295,10 @@ void checkPendingRegistration() {
   if (gState != STATE_READY) return;
   if (WiFi.status() != WL_CONNECTED) return;
 
+  WiFiClientSecure client;
+  client.setInsecure();
   HTTPClient http;
-  http.begin(String(SERVER_URL) + "/iot/pending-reg");
+  http.begin(client, String(SERVER_URL) + "/iot/pending-reg");
   http.setTimeout(5000);
   addDeviceHeaders(http);
 
@@ -325,12 +323,14 @@ void checkPendingRegistration() {
 }
 
 bool processPayment(const String& encUid) {
-  if (WiFi.status() != WL_CONNECTED) {
-    dispError("WiFi terputus", "Periksa koneksi");
+  if (!ensureWiFi()) {
+    dispError("WiFi Gagal", "Cek Koneksi");
     return false;
   }
+  WiFiClientSecure client;
+  client.setInsecure();
   HTTPClient http;
-  http.begin(String(SERVER_URL) + "/transactions/nfc-pay");
+  http.begin(client, String(SERVER_URL) + "/transactions/nfc-pay");
   http.setTimeout(HTTP_TIMEOUT_MS);
   addDeviceHeaders(http);
 
@@ -357,7 +357,14 @@ bool processPayment(const String& encUid) {
     deserializeJson(r, resp);
     const char* mode = r["data"]["mode"] | "";
 
-    if (strcmp(mode, "IDENTIFICATION") == 0) {
+    if (strcmp(mode, "REGISTERED") == 0) {
+      const char* name       = r["data"]["student"]["name"]     | "Kartu Baru";
+      const char* nisn       = r["data"]["student"]["nisn"]     | "-";
+      const char* cardMasked = r["data"]["cardMasked"]          | "****";
+      long        balance    = r["data"]["student"]["balance"]  | 0L;
+      dispRegSuccess(name, nisn, cardMasked, balance);
+      Serial.printf("[CARD] Kartu baru terdaftar: %s | Saldo: %ld\n", cardMasked, balance);
+    } else if (strcmp(mode, "IDENTIFICATION") == 0) {
       const char* name    = r["data"]["student"]["name"]    | "?";
       const char* kelas   = r["data"]["student"]["class"]   | "";
       long        balance = r["data"]["student"]["balance"]  | 0L;
@@ -392,12 +399,14 @@ bool processPayment(const String& encUid) {
 //   }
 // ───────────────────────────────────────────────────────────────────
 bool processRegistration(const String& encUid, const String& nisn) {
-  if (WiFi.status() != WL_CONNECTED) {
-    dispError("WiFi terputus", "Periksa koneksi");
+  if (!ensureWiFi()) {
+    dispError("WiFi Gagal", "Cek Koneksi");
     return false;
   }
+  WiFiClientSecure client;
+  client.setInsecure();
   HTTPClient http;
-  http.begin(String(SERVER_URL) + "/iot/register-card");
+  http.begin(client, String(SERVER_URL) + "/iot/register-card");
   http.setTimeout(HTTP_TIMEOUT_MS);
   addDeviceHeaders(http);
 
@@ -440,11 +449,12 @@ void connectWifi() {
   lcd.clear();
   lcdCenter(0, "Sambung WiFi...");
   char ssidBuf[17];
-  snprintf(ssidBuf, 17, "%s", WIFI_SSID);
+  snprintf(ssidBuf, 17, "%.16s", WIFI_SSID);
   lcdRow(1, ssidBuf);
 
   Serial.printf("WiFi: %s ...", WIFI_SSID);
   WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true); 
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   int retry = 0;
@@ -468,6 +478,29 @@ void connectWifi() {
     delay(2000);
     ESP.restart();
   }
+}
+
+bool ensureWiFi() {
+  if (WiFi.status() == WL_CONNECTED) return true;
+  
+  Serial.print("[WiFi] Terputus. Mencoba hubungkan kembali...");
+  lcd.clear();
+  lcdRow(0, "WiFi Terputus");
+  lcdRow(1, "Reconnecting...");
+  
+  int retry = 0;
+  while (WiFi.status() != WL_CONNECTED && retry < 5) {
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    delay(1000);
+    retry++;
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println(" OK");
+    return true;
+  }
+  Serial.println(" GAGAL");
+  return false;
 }
 
 bool syncTime() {
@@ -598,6 +631,8 @@ void handleSerialCommand(const String& cmd) {
 void setup() {
   Serial.begin(115200);
   delay(300);
+  
+  gDeviceId = DEVICE_CODE;
 
   // LCD I2C init
   Wire.begin(LCD_SDA_PIN, LCD_SCL_PIN);
@@ -608,20 +643,22 @@ void setup() {
   lcdCenter(1, "Memulai...");
 
   Serial.println("╔══════════════════════════════════╗");
-  Serial.println("║  AzagasPay NFC Reader v1.3.0    ║");
+  Serial.println("║  AzagasPay NFC Reader v1.3.1    ║");
   Serial.println("╚══════════════════════════════════╝");
 
   // WiFi & NTP
   connectWifi();
-  syncTime();
+  if (!syncTime()) {
+    Serial.println("[WARNING] NTP Sync Gagal! Timestamp akan tidak valid.");
+  }
 
-  // MFRC522 SPI init
-  SPI.begin(RC522_SCK_PIN, RC522_MISO_PIN, RC522_MOSI_PIN);
+  // MFRC522 SPI init — Sertakan SS Pin eksplisit
+  SPI.begin(RC522_SCK_PIN, RC522_MISO_PIN, RC522_MOSI_PIN, RC522_SS_PIN);
   mfrc522.PCD_Init();
   byte ver = mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
   if (ver == 0x00 || ver == 0xFF) {
-    Serial.println("[ERROR] MFRC522 tidak terdeteksi!");
-    dispError("RC522 tidak", "terdeteksi");
+    Serial.println("[ERROR] RC522 tidak terdeteksi!");
+    dispError("Hardware Error", "RC522 Hilang");
     while (true) delay(1000);
   }
   Serial.printf("MFRC522 OK — Version: 0x%02X\n", ver);

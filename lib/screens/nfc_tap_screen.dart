@@ -1,4 +1,5 @@
 // lib/screens/nfc_tap_screen.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -8,7 +9,7 @@ import '../services/cart_provider.dart';
 import '../services/nfc_service.dart';
 import '../widgets/common_widgets.dart';
 import 'payment_success_screen.dart';
-import 'dashboard_screen.dart';
+import 'main_navigation_screen.dart';
 
 class NfcTapScreen extends StatefulWidget {
   final bool isLoginMode;
@@ -20,9 +21,13 @@ class NfcTapScreen extends StatefulWidget {
 
 class _NfcTapScreenState extends State<NfcTapScreen>
     with SingleTickerProviderStateMixin {
+  static const bool _simulateNfc = true; // Diaktifkan untuk testing di emulator
+
   late final NfcService _nfc;
   late final AnimationController _pulseCtrl;
   bool _isDone = false;
+  bool _showSimulate = false;
+  Timer? _simulateTimer;
 
   @override
   void initState() {
@@ -32,10 +37,18 @@ class _NfcTapScreenState extends State<NfcTapScreen>
       vsync: this, duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
     _startScan();
+    
+    // Tampilkan tombol simulasi setelah 5 detik jika belum selesai
+    _simulateTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted && !_isDone) {
+        setState(() => _showSimulate = true);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _simulateTimer?.cancel();
     _pulseCtrl.dispose();
     _nfc.cancelScan();
     _nfc.dispose();
@@ -43,8 +56,9 @@ class _NfcTapScreenState extends State<NfcTapScreen>
   }
 
   void _startScan() async {
-    // Ganti simulateScan → startScan() untuk device nyata
-    final uid = await _nfc.simulateScan(delaySeconds: 3);
+    final uid = _simulateNfc
+        ? await _nfc.simulateScan(delaySeconds: 3)
+        : await _nfc.startScan();
     if (!mounted || _isDone) return;
     _isDone = true;
 
@@ -60,6 +74,24 @@ class _NfcTapScreenState extends State<NfcTapScreen>
     }
   }
 
+  void _onManualSimulate() async {
+    if (_isDone) return;
+    _simulateTimer?.cancel();
+    setState(() => _showSimulate = false);
+    
+    final uid = await _nfc.simulateScan(delaySeconds: 1);
+    if (!mounted || _isDone) return;
+    _isDone = true;
+
+    if (uid != null) {
+      if (widget.isLoginMode) {
+        await _handleNfcLogin(uid);
+      } else {
+        await _handleNfcPayment(uid);
+      }
+    }
+  }
+
   // ── NFC Login ────────────────────────────────────────────────
   Future<void> _handleNfcLogin(String uid) async {
     final auth = context.read<AuthProvider>();
@@ -67,7 +99,7 @@ class _NfcTapScreenState extends State<NfcTapScreen>
     if (!mounted) return;
     if (ok) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
         (_) => false);
     } else {
       _showError(auth.errorMessage ?? 'Kartu tidak dikenali');
@@ -83,7 +115,7 @@ class _NfcTapScreenState extends State<NfcTapScreen>
     if (tx != null) {
       // Update saldo di AuthProvider
       context.read<AuthProvider>().updateBalance(tx.balanceAfter);
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => PaymentSuccessScreen(transaction: tx)));
     } else {
@@ -193,7 +225,7 @@ class _NfcTapScreenState extends State<NfcTapScreen>
     return NfcRippleWidget(
       size: 200,
       color: isProcessing ? AppColors.success : AppColors.primary,
-      child: FloatingNfcCard(iconSize: 44),
+      child: const FloatingNfcCard(iconSize: 44),
     );
   }
 
@@ -248,6 +280,20 @@ class _NfcTapScreenState extends State<NfcTapScreen>
             ),
           ),
         ),
+        if (_showSimulate) ...[
+          const SizedBox(height: 20),
+          TextButton(
+            onPressed: _onManualSimulate,
+            style: TextButton.styleFrom(
+              backgroundColor: AppColors.primary.withOpacity(0.1),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text('Simulasi Tap Kartu', 
+              style: GoogleFonts.poppins(
+                fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
+          ),
+        ],
       ]),
     );
   }

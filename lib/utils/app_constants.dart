@@ -4,11 +4,8 @@ class AppConstants {
   AppConstants._();
 
   // Base URL
-  // Ganti IP sesuai server/laptop yang menjalankan backend
-  // Emulator Android  -> 10.0.2.2:3000
-  // Perangkat fisik   -> IP laptop di jaringan yang sama, mis. 192.168.1.5:3000
-  // Production        -> https://api.azagaspay.com
-  static const String baseUrl = 'http://10.0.2.2:3000/api';
+  // Menggunakan Cloudflare Tunnel agar koneksi stabil dan global
+  static const String baseUrl = 'https://utilization-paxil-suffering-asking.trycloudflare.com/api';
 
   // Auth
   static const String loginEndpoint        = '/auth/login';

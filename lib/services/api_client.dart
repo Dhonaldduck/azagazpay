@@ -6,12 +6,14 @@ import 'package:http/http.dart' as http;
 import '../utils/app_constants.dart';
 import '../utils/app_exceptions.dart';
 import 'token_storage.dart';
+import 'server_config_service.dart';
 
 class ApiClient {
   ApiClient._();
   static final ApiClient instance = ApiClient._();
 
   final _storage = TokenStorage.instance;
+  final _serverConfig = ServerConfigService.instance;
 
   // ── Base headers ───────────────────────────────────────────────
   Future<Map<String, String>> _headers({bool withAuth = true}) async {
@@ -90,8 +92,9 @@ class ApiClient {
       final refreshToken = await _storage.getRefreshToken();
       if (refreshToken == null) return false;
 
+      final baseUrl = await _serverConfig.getBaseUrl();
       final response = await http.post(
-        Uri.parse('${AppConstants.baseUrl}${AppConstants.refreshEndpoint}'),
+        Uri.parse('$baseUrl${AppConstants.refreshEndpoint}'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'refreshToken': refreshToken}),
       ).timeout(AppConstants.connectTimeout);
@@ -115,7 +118,8 @@ class ApiClient {
     Map<String, String>? queryParams,
     bool withAuth = true,
   }) async {
-    final uri = Uri.parse('${AppConstants.baseUrl}$path')
+    final baseUrl = await _serverConfig.getBaseUrl();
+    final uri = Uri.parse('$baseUrl$path')
         .replace(queryParameters: queryParams);
     return _request((h) => http.get(uri, headers: h), withAuth: withAuth);
   }
@@ -125,7 +129,8 @@ class ApiClient {
     Map<String, dynamic> body, {
     bool withAuth = true,
   }) async {
-    final uri = Uri.parse('${AppConstants.baseUrl}$path');
+    final baseUrl = await _serverConfig.getBaseUrl();
+    final uri = Uri.parse('$baseUrl$path');
     return _request(
       (h) => http.post(uri, headers: h, body: json.encode(body)),
       withAuth: withAuth,
@@ -137,7 +142,8 @@ class ApiClient {
     Map<String, dynamic> body, {
     bool withAuth = true,
   }) async {
-    final uri = Uri.parse('${AppConstants.baseUrl}$path');
+    final baseUrl = await _serverConfig.getBaseUrl();
+    final uri = Uri.parse('$baseUrl$path');
     return _request(
       (h) => http.put(uri, headers: h, body: json.encode(body)),
       withAuth: withAuth,
@@ -148,7 +154,8 @@ class ApiClient {
     String path, {
     bool withAuth = true,
   }) async {
-    final uri = Uri.parse('${AppConstants.baseUrl}$path');
+    final baseUrl = await _serverConfig.getBaseUrl();
+    final uri = Uri.parse('$baseUrl$path');
     return _request(
       (h) => http.delete(uri, headers: h),
       withAuth: withAuth,

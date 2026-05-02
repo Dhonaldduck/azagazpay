@@ -1,5 +1,15 @@
 {
     "C_Cpp.errorSquiggles": "enabled",
     "C_Cpp.default.compileCommands": "${workspaceFolder}/azagazpay-firmware/compile_commands.json",
-    "java.configuration.updateBuildConfiguration": "automatic"
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "cmake.sourceDirectory": "/home/dhonaldduck/Documents/azagaspay-project/azagaspay/linux",
+    "java.jdt.ls.java.home": "/usr/lib/jvm/java-17-openjdk",
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-17",
+            "path": "/usr/lib/jvm/java-17-openjdk",
+            "default": true
+        }
+    ],
+    "java.jdk.home": "/usr/lib/jvm/java-17-openjdk"
 }

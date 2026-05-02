@@ -48,9 +48,13 @@ class NfcService extends ChangeNotifier {
         timeout: const Duration(seconds: 30),
         iosMultipleTagMessage: 'Tempelkan satu kartu saja',
         iosAlertMessage: 'Tempelkan kartu AzagasPay',
+        readIso14443A: true,
+        readIso14443B: true,
+        readIso18092: true,
+        readIso15693: true,
       );
 
-      _cardUid = tag.id; // UID kartu dalam format hex
+      _cardUid = tag.id.toUpperCase().replaceAll(':', ''); // UID kartu normalisasi
       _setState(NfcReadState.success);
       return _cardUid;
     } catch (e) {
@@ -63,7 +67,9 @@ class NfcService extends ChangeNotifier {
       _setState(NfcReadState.error);
       return null;
     } finally {
-      await FlutterNfcKit.finish();
+      try {
+        await FlutterNfcKit.finish();
+      } catch (_) {}
     }
   }
 
